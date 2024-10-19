@@ -1,0 +1,43 @@
+---
+
+- name: Install APT https transport
+  apt:
+    package: apt-transport-https
+    update_cache: yes
+    state: present
+
+- name: Register repository signing key
+  apt_key:
+    url: "{{ teleport__apt_repo_key }}"
+  when: not teleport__localkey
+
+- name: Register repository signing key
+  apt_key:
+    data: "{{ lookup('file', 'teleport-pubkey.asc') }}"
+  when: teleport__localkey
+
+- name: Install Amazon Root CA
+  copy:
+    src: AmazonRootCA1.pem
+    dest: /etc/ssl/certs
+    mode: 0444
+    owner: root
+    group: root
+  when: teleport__localkey
+
+- name: Add debian repository
+  apt_repository:
+    repo: "{{ teleport__apt_repo }}"
+    state: present
+    update_cache: yes
+
+- name: Install teleport package
+  apt:
+    package: "teleport{{ teleport__version | ternary('=' + teleport__version, '') }}"
+    state: present
+    update_cache: yes
+
+- name: Hold teleport package version
+  dpkg_selections:
+    name: teleport
+    selection: hold
